@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/MicahParks/keyfunc/v3"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/juliendoutre/recorder/internal/server"
@@ -62,17 +63,26 @@ func main() {
 		RawQuery: pgQuery.Encode(),
 	}
 
-	pg, err := pgxpool.New(context.Background(), pgURL.String())
+	ctx := context.Background()
+
+	pg, err := pgxpool.New(ctx, pgURL.String())
 	if err != nil {
 		logger.Panic("Connecting to DB", zap.Error(err))
 	}
 	defer pg.Close()
 
-	v1.RegisterRecorderServer(grpcServer, server.New(&v1.Version{
+	jwkStore, err := keyfunc.NewDefaultCtx(ctx, []string{})
+	if err != nil {
+		logger.Panic("Starting JWKs store", zap.Error(err))
+	}
+
+	server, err := server.New(&v1.Version{
 		GoVersion: GoVersion,
 		Os:        Os,
 		Arch:      Arch,
-	}, pg))
+	}, pg, jwkStore)
+
+	v1.RegisterRecorderServer(grpcServer, server)
 
 	grpcPort, err := strconv.ParseInt(os.Getenv("GRPC_PORT"), 10, 64)
 	if err != nil {
