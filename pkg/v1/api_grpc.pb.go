@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RecorderClient interface {
 	GetVersion(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Version, error)
+	Record(ctx context.Context, in *RecordInput, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type recorderClient struct {
@@ -43,11 +44,21 @@ func (c *recorderClient) GetVersion(ctx context.Context, in *emptypb.Empty, opts
 	return out, nil
 }
 
+func (c *recorderClient) Record(ctx context.Context, in *RecordInput, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/recorder.api.v1.recorder/Record", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RecorderServer is the server API for Recorder service.
 // All implementations must embed UnimplementedRecorderServer
 // for forward compatibility
 type RecorderServer interface {
 	GetVersion(context.Context, *emptypb.Empty) (*Version, error)
+	Record(context.Context, *RecordInput) (*emptypb.Empty, error)
 	mustEmbedUnimplementedRecorderServer()
 }
 
@@ -57,6 +68,9 @@ type UnimplementedRecorderServer struct {
 
 func (UnimplementedRecorderServer) GetVersion(context.Context, *emptypb.Empty) (*Version, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVersion not implemented")
+}
+func (UnimplementedRecorderServer) Record(context.Context, *RecordInput) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Record not implemented")
 }
 func (UnimplementedRecorderServer) mustEmbedUnimplementedRecorderServer() {}
 
@@ -89,6 +103,24 @@ func _Recorder_GetVersion_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Recorder_Record_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecordInput)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecorderServer).Record(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/recorder.api.v1.recorder/Record",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecorderServer).Record(ctx, req.(*RecordInput))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Recorder_ServiceDesc is the grpc.ServiceDesc for Recorder service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -99,6 +131,10 @@ var Recorder_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetVersion",
 			Handler:    _Recorder_GetVersion_Handler,
+		},
+		{
+			MethodName: "Record",
+			Handler:    _Recorder_Record_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

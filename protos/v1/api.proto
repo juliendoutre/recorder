@@ -9,6 +9,7 @@ import "google/protobuf/empty.proto";
 
 service recorder {
     rpc GetVersion(google.protobuf.Empty) returns (Version);
+    rpc Record(RecordInput) returns (google.protobuf.Empty);
 }
 
 message Version {
@@ -18,4 +19,8 @@ message Version {
     string go_version                    = 4;
     string os                            = 5;
     string arch                          = 6;
+}
+
+message RecordInput {
+    string jwt = 1;
 }
