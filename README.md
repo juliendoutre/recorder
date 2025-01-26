@@ -56,5 +56,5 @@ docker compose -f ./deploy/dev/docker-compose.yaml rm
 docker compose -f ./deploy/local/docker-compose.yaml up -d --build
 docker compose -f ./deploy/local/docker-compose.yaml stop
 docker compose -f ./deploy/local/docker-compose.yaml rm
-go run ./cmd/cli version
+grpcurl localhost:8000 recorder.api.v1.recorder/GetVersion
 ```

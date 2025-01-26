@@ -52,7 +52,7 @@ func main() {
 	reflection.Register(grpcServer)
 
 	pgQuery := url.Values{}
-	pgQuery.Add("sslmode", "require")
+	pgQuery.Add("sslmode", "verify-full")
 
 	pgURL := url.URL{
 		Scheme:   "postgres",
