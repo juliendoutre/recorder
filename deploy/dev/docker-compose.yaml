@@ -1,0 +1,39 @@
+name: recorder
+services:
+  postgresql:
+    image: index.docker.io/postgres:16.3@sha256:d0f363f8366fbc3f52d172c6e76bc27151c3d643b870e1062b4e8bfe65baf609
+    init: true
+    restart: unless-stopped
+    container_name: postgresql
+    hostname: postgresql
+    environment:
+      POSTGRES_DB: $POSTGRES_DB
+      POSTGRES_USER: $POSTGRES_USER
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+    networks:
+      - recorder-network
+    ports:
+      - $POSTGRES_PORT:$POSTGRES_PORT
+    healthcheck:
+      test: pg_isready
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+  migrator:
+    image: index.docker.io/migrate/migrate:v4.18.1@sha256:f21c436af23c282f4516b00ba3e93bccf5c5fe5cd52530fd5c319a936998f539
+    init: true
+    container_name: migrator
+    hostname: migrator
+    networks:
+      - recorder-network
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    volumes:
+      - ../../sql:/migrations:ro
+    command: -path=/migrations/ -database postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable up
+networks:
+  recorder-network:
+    driver: bridge
+    name: recorder-network

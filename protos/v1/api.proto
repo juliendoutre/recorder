@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package recorder.api.v1;
+
+option go_package = "pkg/v1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+service recorder {
+    rpc GetVersion(google.protobuf.Empty) returns (Version);
+}
+
+message Version {
+    string semver                        = 1;
+    string git_commit_hash               = 2;
+    google.protobuf.Timestamp build_time = 3;
+    string go_version                    = 4;
+    string os                            = 5;
+    string arch                          = 6;
+}
