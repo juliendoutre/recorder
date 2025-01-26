@@ -31,6 +31,17 @@ sqlfluff lint --dialect postgres ./sql/*.sql
 go test -v ./...
 ```
 
+### Generate certs
+
+```shell
+brew install mkcert
+mkcert -install
+mkdir -p ./certs
+mkcert -cert-file ./certs/postgresql.crt.pem -key-file ./certs/postgresql.key.pem postgresql localhost
+mkcert -cert-file ./certs/server.crt.pem -key-file ./certs/server.key.pem server localhost
+export CAROOT=$(mkcert -CAROOT)
+```
+
 ### Run integration tests
 
 ```shell

@@ -2,6 +2,9 @@ package cli
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"path"
 	"time"
 
 	v1 "github.com/juliendoutre/recorder/pkg/v1"
@@ -9,12 +12,13 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
-	host string
-	port int
+	host       string
+	port       int
+	caCertPath string
 
 	conn   *grpc.ClientConn
 	client v1.RecorderClient
@@ -34,8 +38,13 @@ func RootCmd(version *v1.Version) *cobra.Command {
 				return err
 			}
 
+			creds, err := credentials.NewClientTLSFromFile(caCertPath, "")
+			if err != nil {
+				log.Fatalf("failed to load credentials: %v", err)
+			}
+
 			clientOptions := []grpc.DialOption{
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
+				grpc.WithTransportCredentials(creds),
 				grpc.WithConnectParams(grpc.ConnectParams{
 					MinConnectTimeout: 1 * time.Second,
 					Backoff:           backoff.DefaultConfig,
@@ -64,6 +73,7 @@ func RootCmd(version *v1.Version) *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(&host, "host", "localhost", "Host the Recorder server listens on.")
 	cmd.PersistentFlags().IntVar(&port, "port", 8000, "Port the Recorder server listens on.")
+	cmd.PersistentFlags().StringVar(&caCertPath, "ca-cert-path", path.Join(os.Getenv("CAROOT"), "rootCA.pem"), "Path to the CA certificate used for TLS")
 
 	cmd.AddCommand(
 		versionCmd(version),

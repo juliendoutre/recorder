@@ -17,8 +17,10 @@ import (
 	v1 "github.com/juliendoutre/recorder/pkg/v1"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 )
 
 var (
@@ -34,19 +36,30 @@ func main() {
 	}
 	defer func() { _ = logger.Sync() }()
 
+	creds, err := credentials.NewServerTLSFromFile("/etc/recorder/server.crt.pem", "/etc/recorder/server.key.pem")
+	if err != nil {
+		log.Fatalf("failed to create credentials: %v", err)
+	}
+
 	grpcOptions := []grpc.ServerOption{
+		grpc.Creds(creds),
 		grpc.ChainUnaryInterceptor(grpc_recovery.UnaryServerInterceptor()),
 	}
 
 	grpcServer := grpc.NewServer(grpcOptions...)
 
 	healthgrpc.RegisterHealthServer(grpcServer, health.NewServer())
+	reflection.Register(grpcServer)
+
+	pgQuery := url.Values{}
+	pgQuery.Add("sslmode", "require")
 
 	pgURL := url.URL{
-		Scheme: "postgres",
-		Host:   net.JoinHostPort(os.Getenv("POSTGRES_HOST"), os.Getenv("POSTGRES_PORT")),
-		User:   url.UserPassword(os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD")),
-		Path:   os.Getenv("POSTGRES_DB"),
+		Scheme:   "postgres",
+		Host:     net.JoinHostPort(os.Getenv("POSTGRES_HOST"), os.Getenv("POSTGRES_PORT")),
+		User:     url.UserPassword(os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD")),
+		Path:     os.Getenv("POSTGRES_DB"),
+		RawQuery: pgQuery.Encode(),
 	}
 
 	pg, err := pgxpool.New(context.Background(), pgURL.String())
