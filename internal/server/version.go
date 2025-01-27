@@ -7,6 +7,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func (s *Server) GetVersion(ctx context.Context, _ *emptypb.Empty) (*v1.Version, error) {
+func (s *Server) GetVersion(_ context.Context, _ *emptypb.Empty) (*v1.Version, error) {
 	return s.version, nil
 }

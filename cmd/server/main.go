@@ -25,22 +25,25 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+//nolint:gochecknoglobals
 var (
 	GoVersion string
-	Os        string
+	Os        string //nolint:varnamelen
 	Arch      string
 )
 
+//nolint:funlen
 func main() {
 	logger, err := zap.NewProductionConfig().Build()
 	if err != nil {
 		log.Panic(err)
 	}
+
 	defer func() { _ = logger.Sync() }()
 
 	creds, err := credentials.NewServerTLSFromFile("/etc/recorder/server.crt.pem", "/etc/recorder/server.key.pem")
 	if err != nil {
-		log.Fatalf("failed to create credentials: %v", err)
+		logger.Panic("failed to create credentials", zap.Error(err))
 	}
 
 	grpcOptions := []grpc.ServerOption{
@@ -66,11 +69,11 @@ func main() {
 
 	ctx := context.Background()
 
-	pg, err := pgxpool.New(ctx, pgURL.String())
+	pgPool, err := pgxpool.New(ctx, pgURL.String())
 	if err != nil {
 		logger.Panic("Connecting to DB", zap.Error(err))
 	}
-	defer pg.Close()
+	defer pgPool.Close()
 
 	jwkStore, err := keyfunc.NewDefaultCtx(ctx, strings.Split(os.Getenv("JWKS_URLS"), ","))
 	if err != nil {
@@ -81,7 +84,10 @@ func main() {
 		GoVersion: GoVersion,
 		Os:        Os,
 		Arch:      Arch,
-	}, pg, jwkStore)
+	}, pgPool, jwkStore)
+	if err != nil {
+		logger.Panic("Creating server", zap.Error(err))
+	}
 
 	v1.RegisterRecorderServer(grpcServer, server)
 
@@ -98,6 +104,7 @@ func main() {
 	go handleSignals(logger, grpcServer)
 
 	logger.Info("Starting the Recorder server...", zap.Int64("port", grpcPort))
+
 	if err := grpcServer.Serve(listener); err != nil {
 		logger.Panic("Failed to serve gRPC request", zap.Error(err))
 	}

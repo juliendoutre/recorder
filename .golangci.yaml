@@ -3,7 +3,6 @@ linters:
   disable:
     - exportloopref # Deprecated
     - exhaustruct # Too noisy
-    - mnd # Too noisy
 linters-settings:
   depguard:
     rules:
