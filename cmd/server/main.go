@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/MicahParks/keyfunc/v3"
@@ -71,7 +72,7 @@ func main() {
 	}
 	defer pg.Close()
 
-	jwkStore, err := keyfunc.NewDefaultCtx(ctx, []string{})
+	jwkStore, err := keyfunc.NewDefaultCtx(ctx, strings.Split(os.Getenv("JWKS_URLS"), ","))
 	if err != nil {
 		logger.Panic("Starting JWKs store", zap.Error(err))
 	}
