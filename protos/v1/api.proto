@@ -22,5 +22,6 @@ message Version {
 }
 
 message RecordInput {
-    string jwt = 1;
+    string jwt    = 1;
+    string digest = 2;
 }
