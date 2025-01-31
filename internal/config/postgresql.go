@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"net"
 	"net/url"
 	"os"
@@ -12,7 +13,7 @@ func PostgresURL() (*url.URL, error) {
 
 	password, err := os.ReadFile(os.Getenv("POSTGRES_PASSWORD_PATH"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading PG password file: %w", err)
 	}
 
 	return &url.URL{

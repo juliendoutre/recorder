@@ -14,7 +14,7 @@ import (
 //nolint:gochecknoglobals
 var (
 	GoVersion string
-	Os        string //nolint:varnamelen
+	Os        string
 	Arch      string
 )
 
