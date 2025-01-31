@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_DB: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
-      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     networks:
       - recorder-network
     ports:
@@ -30,19 +30,39 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    secrets:
+      - postgres_password
   migrator:
-    image: index.docker.io/migrate/migrate:v4.18.1@sha256:f21c436af23c282f4516b00ba3e93bccf5c5fe5cd52530fd5c319a936998f539
+    build:
+      context: ../..
+      dockerfile: images/migrator.Dockerfile
     init: true
     container_name: migrator
     hostname: migrator
+    environment:
+      POSTGRES_HOST: $POSTGRES_HOST
+      POSTGRES_PORT: $POSTGRES_PORT
+      POSTGRES_DB: $POSTGRES_DB
+      POSTGRES_USER: $POSTGRES_USER
+      POSTGRES_PASSWORD_PATH: /run/secrets/postgres_password
+      MIGRATIONS_PATH: $MIGRATIONS_PATH
+    volumes:
+      - ../../sql:$MIGRATIONS_PATH:ro
+      - type: bind
+        read_only: true
+        source: ../../certs/migrator.crt.pem
+        target: /etc/recorder/migrator.crt.pem
+      - type: bind
+        read_only: true
+        source: ../../certs/migrator.key.pem
+        target: /etc/recorder/migrator.key.pem
     networks:
       - recorder-network
+    secrets:
+      - postgres_password
     depends_on:
       postgresql:
         condition: service_healthy
-    volumes:
-      - ../../sql:/migrations:ro
-    command: -path=/migrations/ -database postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=require up
   server:
     build:
       context: ../..
@@ -56,8 +76,9 @@ services:
       POSTGRES_PORT: $POSTGRES_PORT
       POSTGRES_DB: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
-      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+      POSTGRES_PASSWORD_PATH: /run/secrets/postgres_password
       GRPC_PORT: $GRPC_PORT
+      JWKS_URLS: $JWKS_URLS
     ports:
       - $GRPC_PORT:$GRPC_PORT
     volumes:
@@ -71,6 +92,8 @@ services:
         target: /etc/recorder/server.key.pem
     networks:
       - recorder-network
+    secrets:
+      - postgres_password
     depends_on:
       postgresql:
         condition: service_healthy

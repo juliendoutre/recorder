@@ -10,21 +10,21 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG GO_VERSION
 
-WORKDIR /recorder/server
+WORKDIR /recorder/migrator
 
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY ./cmd/server ./cmd/server
+COPY ./cmd/migrator ./cmd/migrator
 COPY ./pkg ./pkg
 COPY ./internal ./internal
 
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w -X main.GoVersion=$GO_VERSION -X main.Os=$TARGETOS -X main.Arch=$TARGETARCH" -o /server ./cmd/server
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w -X main.GoVersion=$GO_VERSION -X main.Os=$TARGETOS -X main.Arch=$TARGETARCH" -o /migrator ./cmd/migrator
 
 FROM --platform=$TARGETPLATFORM gcr.io/distroless/base-debian$DEBIAN_VERSION:latest AS runner
 
 LABEL org.opencontainers.image.authors Julien Doutre <jul.doutre@gmail.com>
-LABEL org.opencontainers.image.title recorder.server
+LABEL org.opencontainers.image.title recorder.migrator
 LABEL org.opencontainers.image.url https://github.com/juliendoutre/recorder
 LABEL org.opencontainers.image.documentation https://github.com/juliendoutre/recorder
 LABEL org.opencontainers.image.source https://github.com/juliendoutre/recorder
@@ -32,10 +32,10 @@ LABEL org.opencontainers.image.licenses MIT
 
 WORKDIR /
 
-COPY --from=builder /server /server
+COPY --from=builder /migrator /migrator
 
 USER nonroot:nonroot
 
 EXPOSE 8000
 
-ENTRYPOINT ["/server"]
+ENTRYPOINT ["/migrator"]

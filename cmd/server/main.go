@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -15,6 +14,7 @@ import (
 	"github.com/MicahParks/keyfunc/v3"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/juliendoutre/recorder/internal/config"
 	"github.com/juliendoutre/recorder/internal/server"
 	v1 "github.com/juliendoutre/recorder/pkg/v1"
 	"go.uber.org/zap"
@@ -43,7 +43,7 @@ func main() {
 
 	creds, err := credentials.NewServerTLSFromFile("/etc/recorder/server.crt.pem", "/etc/recorder/server.key.pem")
 	if err != nil {
-		logger.Panic("failed to create credentials", zap.Error(err))
+		logger.Panic("Loading TLS credentials", zap.Error(err))
 	}
 
 	grpcOptions := []grpc.ServerOption{
@@ -56,15 +56,9 @@ func main() {
 	healthgrpc.RegisterHealthServer(grpcServer, health.NewServer())
 	reflection.Register(grpcServer)
 
-	pgQuery := url.Values{}
-	pgQuery.Add("sslmode", "require")
-
-	pgURL := url.URL{
-		Scheme:   "postgres",
-		Host:     net.JoinHostPort(os.Getenv("POSTGRES_HOST"), os.Getenv("POSTGRES_PORT")),
-		User:     url.UserPassword(os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD")),
-		Path:     os.Getenv("POSTGRES_DB"),
-		RawQuery: pgQuery.Encode(),
+	pgURL, err := config.PostgresURL()
+	if err != nil {
+		logger.Panic("Reading PostgresQL config", zap.Error(err))
 	}
 
 	ctx := context.Background()
@@ -98,7 +92,7 @@ func main() {
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
 	if err != nil {
-		logger.Panic("Failed to create a TCP listener", zap.Error(err))
+		logger.Panic("Creating a TCP listener", zap.Error(err))
 	}
 
 	go handleSignals(logger, grpcServer)
@@ -106,7 +100,7 @@ func main() {
 	logger.Info("Starting the Recorder server...", zap.Int64("port", grpcPort))
 
 	if err := grpcServer.Serve(listener); err != nil {
-		logger.Panic("Failed to serve gRPC request", zap.Error(err))
+		logger.Panic("Serving gRPC request", zap.Error(err))
 	}
 }
 
