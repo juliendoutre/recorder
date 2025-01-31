@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
+	"regexp"
 
 	v1 "github.com/juliendoutre/recorder/pkg/v1"
 	"google.golang.org/grpc/codes"
@@ -12,17 +12,13 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-const digestSize = 71
+var digestRegex = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 
 func (s *Server) Record(ctx context.Context, input *v1.RecordInput) (*emptypb.Empty, error) {
 	digest := input.GetDigest()
 
-	if !strings.HasPrefix(digest, "sha256:") {
-		return nil, status.Error(codes.InvalidArgument, "invalid digest prefix") //nolint:wrapcheck
-	}
-
-	if len(digest) != digestSize {
-		return nil, status.Error(codes.InvalidArgument, "invalid digest length") //nolint:wrapcheck
+	if !digestRegex.MatchString(input.GetDigest()) {
+		return nil, status.Error(codes.InvalidArgument, "invalid digest") //nolint:wrapcheck
 	}
 
 	token, err := s.jwtParser.Parse(input.GetJwt(), s.jwkStore.Keyfunc)
